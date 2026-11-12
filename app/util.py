@@ -20,8 +20,14 @@ def new_id(prefix: str) -> str:
 
 
 def new_token() -> str:
-    """Unguessable URL token for booking / unsubscribe links."""
-    return secrets.token_urlsafe(18)
+    """Unguessable URL token: booking / unsubscribe links and tenant webhook keys.
+
+    It never starts with "-". Such a value typed after a command-line option
+    (``send_lead.py --tenant-key -Xy...``) would be read as another option."""
+    while True:
+        token = secrets.token_urlsafe(18)
+        if not token.startswith("-"):
+            return token
 
 
 # --- time ----------------------------------------------------------------------------

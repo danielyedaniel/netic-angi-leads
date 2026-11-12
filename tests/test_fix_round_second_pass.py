@@ -8,13 +8,16 @@ whose comment begins "The quiet side": those guard the other direction of a rule
 from __future__ import annotations
 
 import json
+import secrets
 
 import httpx
 import pytest
 
+from app import monitoring
 from app.config import Settings
 from app.mailer.providers import OutboundEmail, PermanentEmailError, ResendEmailProvider
 from app.repo import EV_EMAIL_FAILED, EV_EMAIL_SKIPPED
+from app.util import new_token
 from tests.conftest import ADMIN, ads_payload, db_one, db_rows, leads_payload, post_lead
 
 EMAIL_ALERT_KEY = "email_send_error"
@@ -321,3 +324,54 @@ def test_overview_shows_a_median_speed_to_lead_of_milliseconds_as_milliseconds(
     tile = page.split("Median speed to lead", 1)[1].split("</div>", 2)[1]
     assert shown in tile and "0.0 s" not in tile
 
+
+
+# --- the Monitoring page between two passes of the monitor ------------------------------
+
+
+def test_monitoring_page_shows_a_check_alert_in_the_words_of_the_check_as_it_is_now(client, ctx):
+    # Rule: the health checks are evaluated for the page; the alert a check opened was
+    # worded by the monitor's last pass, up to a minute earlier. The page must not say
+    # "2 lead(s) are quarantined" in the table above an open alert that still says 1.
+    def unmapped(n: int) -> dict:
+        return ads_payload(**consumer(20 + n), ALAccountId="555000")  # no tenant has this account
+
+    post_lead(client, unmapped(1))
+    monitoring.run_checks(ctx.db, ctx.settings, ctx.now())  # the monitor's pass: one lead is waiting
+    post_lead(client, unmapped(2))  # a second one arrives before the next pass
+
+    page = client.get("/dashboard/monitoring", headers=ADMIN).text
+
+    open_alerts = page.split("Open alerts", 1)[1].split("Payload shapes seen", 1)[0]
+    assert "2 lead(s) are quarantined and waiting for action" in open_alerts
+    assert "1 lead(s) are quarantined" not in page
+    stored = db_one(ctx, "SELECT title FROM alerts WHERE dedupe_key = 'check:quarantine' AND status = 'open'")
+    assert stored["title"].startswith("1 lead(s) are quarantined")  # reading the page changes nothing
+
+
+# --- a webhook key that looks like a command-line option -------------------------------
+
+
+def test_generated_token_never_starts_with_a_dash(monkeypatch):
+    # Rule: a tenant's webhook key is pasted after --tenant-key and into URLs. One random
+    # token in 64 starts with "-", which a command line reads as another option.
+    drawn = iter(["-Xy3kQ0aZp9LmN2bV7cR4tU1", "_Ab3kQ0aZp9LmN2bV7cR4tU1", "Qr3kQ0aZp9LmN2bV7cR4tU1w"])
+    monkeypatch.setattr(secrets, "token_urlsafe", lambda nbytes=None: next(drawn))
+
+    assert new_token() == "_Ab3kQ0aZp9LmN2bV7cR4tU1"  # the first draw is thrown away
+
+
+def test_new_tenant_gets_a_webhook_key_that_does_not_start_with_a_dash(client, ctx, monkeypatch):
+    # The same rule where it matters: the key a new tenant is given.
+    drawn = iter(["-Xy3kQ0aZp9LmN2bV7cR4tU1", "Qr3kQ0aZp9LmN2bV7cR4tU1w"])
+    monkeypatch.setattr(secrets, "token_urlsafe", lambda nbytes=None: next(drawn))
+
+    created = client.post(
+        "/admin/api/tenants",
+        json={"name": "Dash Free Roofing", "slug": "dash-free-roofing", "timezone": "America/Chicago"},
+        headers=ADMIN,
+    )
+
+    assert created.status_code in (200, 201), created.text
+    key = db_one(ctx, "SELECT webhook_key FROM tenants WHERE slug = 'dash-free-roofing'")["webhook_key"]
+    assert key == "Qr3kQ0aZp9LmN2bV7cR4tU1w"

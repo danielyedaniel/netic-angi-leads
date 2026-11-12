@@ -25,7 +25,6 @@ each other, so the lead is quarantined (``mapping_conflict``) for a person to de
 
 from __future__ import annotations
 
-import secrets
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -33,7 +32,7 @@ from zoneinfo import available_timezones
 
 from app.alerts import resolve_alert
 from app.repo import get_tenant, get_tenant_by_slug
-from app.util import iso, new_id, normalize_email, one_line
+from app.util import iso, new_id, new_token, normalize_email, one_line
 
 SOURCE_ANGI = "angi"
 
@@ -215,7 +214,7 @@ def create_tenant(
             business_hours_start,
             business_hours_end,
             appointment_minutes,
-            webhook_key or secrets.token_urlsafe(18),
+            webhook_key or new_token(),
             1 if is_test else 0,
             iso(now),
         ),

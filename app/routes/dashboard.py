@@ -42,7 +42,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from jinja2 import Environment
 
 from app import analytics, credits, monitoring, outbox, queries
-from app.alerts import list_alerts, resolve_alert_by_id
+from app.alerts import CHECK_KEY_PREFIX, list_alerts, resolve_alert_by_id
 from app.booking import slot_from_appointment, tenant_zone
 from app.context import AppContext
 from app.repo import get_lead, get_tenant, get_tenant_by_slug, kv_get
@@ -859,6 +859,14 @@ def monitoring_page(request: Request, status: str = "", live: str = "") -> Respo
             "SELECT COUNT(*) AS n FROM webhook_events WHERE status = 'quarantined'"
         ).fetchone()["n"]
         last_run = kv_get(conn, "monitor:last_run")
+    # A check's alert carries the wording of the monitor's last pass, up to a minute old,
+    # while the checks themselves were evaluated for this page. Show the current wording,
+    # or the table says "2 lead(s) are quarantined" above an alert that still says 1.
+    failing = {f"{CHECK_KEY_PREFIX}{check.name}": check for check in checks if check.status != "ok"}
+    for alert in alerts:
+        check = failing.get(alert["dedupe_key"]) if alert["status"] == "open" else None
+        if check is not None:
+            alert.update(title=check.summary, severity=check.status, detail=check.detail)
     resolved = [alert for alert in alerts if alert["status"] != "open"]
     resolved.sort(key=lambda alert: alert["resolved_at"] or "", reverse=True)
     return _render(

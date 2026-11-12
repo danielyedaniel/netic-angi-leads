@@ -53,10 +53,23 @@ make tunnel                    # terminal 2: note the https URL
   once; API calls are not affected.
 - Have the reviewers' details ready: the webhook URL
   `https://<ngrok-domain>/webhooks/angi/leads` and the API key for the `X-API-KEY` header.
-  Ask them to put their own address in `Email`: a lead is emailed at the address it
-  carries. Angi's printed example can be posted as it is (its account, `123456`, is
-  mapped to Sparkle Home Cleaning): the lead is stored and routed, and its page shows that
-  the email was held back because the address is the one from Angi's documentation.
+  Ask them to put their own address in `Email` and a new value in `CorrelationId`: a lead
+  is emailed at the address it carries, and the same `CorrelationId` again is the same
+  lead (answered `duplicate_delivery`, or `updated` if something in it changed), not a new
+  one. Angi's printed example can be posted as it is (its account, `123456`, is mapped to
+  Sparkle Home Cleaning): the lead is stored and routed, and its page shows that the email
+  was held back because the address is the one from Angi's documentation.
+- If a reviewer has already sent a lead of their own for account `123456` from the
+  address you use in step 1, step 1's lead is, correctly, a repeat request (a `duplicate`
+  block and the short acknowledgement instead of the introduction). Use another address
+  for step 1, or show it as step 5 early. A phone number counts the same way: a lead that
+  keeps the printed example's phone is flagged as a duplicate of an earlier lead with
+  that phone on the account (after step 4, the salvaged one).
+- Follow-ups are real: every lead that got an introduction and has not booked gets a
+  nudge after an hour and another the next day (between 8 AM and 8 PM local), for as long
+  as the service runs. The nudge for your own check lead can arrive during the demo (show
+  it). Stop the service when you are done, or the reviewers get theirs; `make reset-db`
+  drops whatever is still queued.
 
 ## The demo
 
@@ -125,7 +138,9 @@ make send SAMPLE=missing_account_id          # no Angi account id in the payload
 `result: quarantined`, `reason: no_account_id`. No mapping can route this one, so its
 row on the Monitoring page has a tenant picker: choose Summit Heating & Air, press
 **Assign and replay**, and it becomes that tenant's lead. (It keeps the sample's own
-@example.com address, so its email is not handed to the mail server.)
+@example.com address, so its email is not handed to the mail server. And with no Angi
+account it has no fee: the Overview's note in step 6 about one lead without a fee is
+this one.)
 
 Point to make: *we never guess which business a homeowner contacted, because the email
 goes out under that business's name. Nothing is lost while the mapping is missing, and a
@@ -153,7 +168,8 @@ uv run python scripts/send_lead.py --sample malformed_spec_example --raw
 > "This is the example from Angi's own spec with its defects left in. It is not valid
 > JSON: curly quotes, an unquoted email, a missing comma. We salvage it."
 
-`result: processed`, `parseMode: tolerant`, and the warnings say what was salvaged. Only
+`result: processed`, `parseMode: tolerant`, and the warnings say what was salvaged (a
+third `schema_drift` alert opens for it). Only
 the address (example.com instead of the one Angi printed) and the lead id differ from
 the spec, so this lead's email is not sent to anyone; its page shows why. (The
 `email_failures` health check counts the messages stopped this way, here and in step 3;
@@ -181,7 +197,8 @@ Response: `duplicate: { matchedOn: [email], confidence: high, creditClaimId: ...
 the email is the "We got your new request" note, not a second introduction, because that
 address already heard from this business. Open **Credits**: the claim, its deadline, the
 eligibility check against Angi's conditions, the ready-to-paste request text, and the CSV
-export.
+export. (The list is sorted by deadline, soonest first, so the new claim is its last row;
+choosing Status "detected" shortens the list to the claims still to be filed.)
 
 Point to make: *Angi's rule is "charged twice for the same homeowner within 45 days",
 with a request deadline and a requirement that the pro tried to call them within 24
