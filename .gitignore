@@ -1,0 +1,21 @@
+# secrets and local state
+private/
+.env
+.env.*
+!.env.example
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/outbox/
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# editors / OS
+.DS_Store
+.vscode/
+.idea/
