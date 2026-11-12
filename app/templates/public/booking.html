@@ -1,0 +1,51 @@
+{% extends "public/_base.html" %}
+{% block title %}Book with {{ tenant.name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="eyebrow">{{ tenant.name }}</p>
+
+  {% if error %}
+  <div class="notice err" role="alert">{{ error }}</div>
+  {% endif %}
+
+  {% if appointment %}
+  <div class="notice ok" role="status">
+    <strong>You're booked, {{ first_name }}.</strong>
+    {{ appointment.label }}
+  </div>
+  <p>Your technician will arrive within that window{% if lead.address_line1 %} at {{ lead.address_line1.rstrip('.') }}{% endif %}.{% if lead.email_normalized %} A confirmation is on its way to your inbox.{% endif %}</p>
+  {% if days %}
+  <h2>Need a different time?</h2>
+  {% endif %}
+  {% else %}
+  <h1>Pick a time, {{ first_name }}</h1>
+  <p class="muted">
+    {% if lead.task_name %}For your {{ lead.task_name }} request{% if lead.city %} in {{ lead.city }}{% endif %}.{% else %}For the request you sent us through Angi.{% endif %}
+    Choose the arrival window that suits you best.
+  </p>
+  {% endif %}
+
+  {% if days %}
+  <form method="post" action="/book/{{ token }}">
+    {% for day in days %}
+    <h2>{{ day.label }}</h2>
+    <div class="slots">
+      {% for slot in day.slots %}
+      <label class="slot">
+        <input type="radio" name="slot" value="{{ slot.key }}" required {% if slot.key == selected %}checked{% endif %}>
+        <span>{{ slot.time_label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    <button type="submit">{{ "Change my appointment" if appointment else "Confirm appointment" }}</button>
+  </form>
+  {% elif not appointment %}
+  <p>We don't have any open times online right now{% if tenant.phone %} &mdash; please call us at <a href="tel:{{ tenant.phone }}">{{ tenant.phone }}</a> and we'll fit you in{% endif %}.</p>
+  {% endif %}
+</div>
+<footer>
+  {% if tenant.phone %}Prefer to talk? Call <a href="tel:{{ tenant.phone }}">{{ tenant.phone }}</a>.{% endif %}
+  All times are {{ tenant.name }}'s local time{% if timezone_label %} ({{ timezone_label }}){% endif %}.
+</footer>
+{% endblock %}

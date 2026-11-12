@@ -1,0 +1,20 @@
+{% extends "public/_base.html" %}
+{% block title %}Email preferences - {{ tenant.name }}{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="eyebrow">{{ tenant.name }}</p>
+  {% if done %}
+  <h1>You're unsubscribed</h1>
+  <p class="muted">{{ tenant.name }} won't email you again. (The one exception: if you book a time yourself, we'll confirm it by email.) If you still need help{% if tenant.phone %}, you can always call us at <a href="tel:{{ tenant.phone }}">{{ tenant.phone }}</a>{% else %}, just reply to our last email{% endif %}.</p>
+  {% else %}
+  <h1>Stop emails from {{ tenant.name }}?</h1>
+  <p class="muted">{{ tenant.name }} will no longer email you about requests you make through Angi.</p>
+  <form method="post" action="/unsubscribe/{{ token }}">
+    <button type="submit">Yes, stop the emails</button>
+  </form>
+  <form method="get" action="/book/{{ token }}">
+    <button type="submit" class="secondary">No, take me to booking</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}
