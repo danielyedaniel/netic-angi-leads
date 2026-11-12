@@ -1,0 +1,26 @@
+{% extends "_layout.html" %}
+{% import "_macros.html" as ui %}
+{% block body %}
+<p style="margin:14px 0 14px 0;">Hi {{ first_name }},</p>
+<p style="margin:0 0 14px 0;font-size:18px;font-weight:600;">You're booked with {{ tenant_name }}.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0;padding:14px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:15px;">
+<tr><td style="padding:2px 14px 2px 0;color:#6b7280;">When</td><td style="padding:2px 0;font-weight:600;">{{ appointment_label or 'See your booking page' }}</td></tr>
+{% if task %}
+<tr><td style="padding:2px 14px 2px 0;color:#6b7280;">What</td><td style="padding:2px 0;">{{ task }}</td></tr>
+{% endif %}
+{% if address %}
+<tr><td style="padding:2px 14px 2px 0;color:#6b7280;">Where</td><td style="padding:2px 0;">{{ address }}</td></tr>
+{% endif %}
+</table>
+<p style="margin:0 0 14px 0;">Your technician will arrive within that window. Need a different time? <a href="{{ booking_url }}" style="color:#1d4ed8;">Change your appointment</a>.</p>
+{% if tenant_phone %}
+<p style="margin:0 0 14px 0;">Questions before then? Reply to this email or call us at <a href="tel:{{ tenant_phone_tel }}" style="color:#1d4ed8;text-decoration:none;">{{ tenant_phone }}</a>.</p>
+{% else %}
+<p style="margin:0 0 14px 0;">Questions before then? Just reply to this email.</p>
+{% endif %}
+<p style="margin:18px 0 0 0;">See you soon,</p>
+{{ ui.signature(tenant_name, tenant_phone, tenant_phone_tel) }}
+{% endblock %}
+{% block footer %}
+<p style="margin:14px 0 0 0;">This confirms an appointment you booked with {{ tenant_name }}.</p>
+{% endblock %}

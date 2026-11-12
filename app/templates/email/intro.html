@@ -1,0 +1,17 @@
+{% extends "_layout.html" %}
+{% import "_macros.html" as ui %}
+{% block body %}
+<p style="margin:14px 0 14px 0;">Hi {{ first_name }},</p>
+{% if task %}
+<p style="margin:0 0 14px 0;">Thanks for your request on Angi &mdash; <strong>{{ task }}</strong>{% if city %} in {{ city }}{% endif %}. This is {{ tenant_name }}, and we'd be glad to help.</p>
+{% else %}
+<p style="margin:0 0 14px 0;">Thanks for your request on Angi. This is {{ tenant_name }}, and we'd be glad to help.</p>
+{% endif %}
+<p style="margin:0;">The quickest way onto our schedule is to pick an arrival window that suits you:</p>
+{{ ui.button(booking_url, "Pick a time") }}
+{{ ui.slot_list(slots) }}
+<p style="margin:0 0 14px 0;">Prefer to talk it through? Just reply to this email{% if tenant_phone %} or call us at <a href="tel:{{ tenant_phone_tel }}" style="color:#1d4ed8;text-decoration:none;">{{ tenant_phone }}</a>{% endif %} and we'll get you booked.</p>
+{{ ui.detail_table(details) }}
+<p style="margin:18px 0 0 0;">Talk soon,</p>
+{{ ui.signature(tenant_name, tenant_phone, tenant_phone_tel) }}
+{% endblock %}

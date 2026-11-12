@@ -1,0 +1,36 @@
+Hi {{ first_name }},
+
+{% if task %}
+Thanks for your request on Angi - {{ task }}{% if city %} in {{ city }}{% endif %}. This is {{ tenant_name }}, and we'd be glad to help.
+{% else %}
+Thanks for your request on Angi. This is {{ tenant_name }}, and we'd be glad to help.
+{% endif %}
+
+The quickest way onto our schedule is to pick an arrival window that suits you:
+
+{{ booking_url }}
+
+{% if slots %}
+Next available:
+{% for slot in slots %}
+  - {{ slot.label }}
+{% endfor %}
+
+{% endif %}
+Prefer to talk it through? Just reply to this email{% if tenant_phone %} or call us at {{ tenant_phone }}{% endif %} and we'll get you booked.
+
+{% if details %}
+What we have from your request:
+{% for label, value in details %}
+  - {{ label }}: {{ value }}
+{% endfor %}
+
+{% endif %}
+Talk soon,
+{{ tenant_name }}
+{% if tenant_phone %}
+{{ tenant_phone }}
+{% endif %}
+
+--
+You're getting this because you asked for a pro through Angi. Don't want emails from {{ tenant_name }}? {{ unsubscribe_url }}

@@ -1,0 +1,10 @@
+{% extends "_layout.html" %}
+{% import "_macros.html" as ui %}
+{% block body %}
+<p style="margin:14px 0 14px 0;">Hi {{ first_name }},</p>
+<p style="margin:0;">Just checking in &mdash; {{ tenant_name }} still has openings for your {{ task or 'project' }}, and it only takes a moment to grab one:</p>
+{{ ui.button(booking_url, "Pick a time") }}
+{{ ui.slot_list(slots) }}
+<p style="margin:0 0 14px 0;">If now isn't the right time, or you've already found someone, just reply and let us know &mdash; no hard feelings.</p>
+{{ ui.signature(tenant_name, tenant_phone, tenant_phone_tel) }}
+{% endblock %}

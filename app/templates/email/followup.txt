@@ -1,0 +1,22 @@
+Hi {{ first_name }},
+
+Just checking in - {{ tenant_name }} still has openings for your {{ task or 'project' }}, and it only takes a moment to grab one:
+
+{{ booking_url }}
+
+{% if slots %}
+Next available:
+{% for slot in slots %}
+  - {{ slot.label }}
+{% endfor %}
+
+{% endif %}
+If now isn't the right time, or you've already found someone, just reply and let us know - no hard feelings.
+
+{{ tenant_name }}
+{% if tenant_phone %}
+{{ tenant_phone }}
+{% endif %}
+
+--
+You're getting this because you asked for a pro through Angi. Don't want emails from {{ tenant_name }}? {{ unsubscribe_url }}

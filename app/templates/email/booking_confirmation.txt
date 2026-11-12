@@ -1,0 +1,24 @@
+Hi {{ first_name }},
+
+You're booked with {{ tenant_name }}.
+
+  When:  {{ appointment_label or 'See your booking page' }}
+{% if task %}
+  What:  {{ task }}
+{% endif %}
+{% if address %}
+  Where: {{ address }}
+{% endif %}
+
+Your technician will arrive within that window. Need a different time? You can change it here:
+
+{{ booking_url }}
+
+{% if tenant_phone %}
+Questions before then? Reply to this email or call us at {{ tenant_phone }}.
+{% else %}
+Questions before then? Just reply to this email.
+{% endif %}
+
+See you soon,
+{{ tenant_name }}

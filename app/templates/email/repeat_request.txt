@@ -1,0 +1,29 @@
+Hi {{ first_name }},
+
+{% if task %}
+We just received another request from you on Angi - {{ task }}{% if city %} in {{ city }}{% endif %}. This is {{ tenant_name }}; you're already on our radar and we don't want you to have to ask twice.
+{% else %}
+We just received another request from you on Angi. This is {{ tenant_name }}; you're already on our radar and we don't want you to have to ask twice.
+{% endif %}
+
+You can lock in an arrival window right now:
+
+{{ booking_url }}
+
+{% if slots %}
+Next available:
+{% for slot in slots %}
+  - {{ slot.label }}
+{% endfor %}
+
+{% endif %}
+Or reply to this email{% if tenant_phone %} / call us at {{ tenant_phone }}{% endif %} and we'll take care of it for you.
+
+Talk soon,
+{{ tenant_name }}
+{% if tenant_phone %}
+{{ tenant_phone }}
+{% endif %}
+
+--
+You're getting this because you asked for a pro through Angi. Don't want emails from {{ tenant_name }}? {{ unsubscribe_url }}
