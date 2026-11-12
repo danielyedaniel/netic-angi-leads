@@ -1,0 +1,31 @@
+{# Small pieces shared by the dashboard pages. #}
+
+{# A status word with its icon. The `tone` filter decides which of the four looks it gets. #}
+{% macro badge(status, label=None) -%}
+<span class="badge {{ status|tone }}">{{ label or (status|string|replace("_", " ")) }}</span>
+{%- endmacro %}
+
+{# The little markers shown next to a lead. #}
+{% macro lead_flags(lead) -%}
+{% if lead.is_duplicate %}<span class="flag" title="Same homeowner as an earlier lead">duplicate</span>{% endif %}
+{% if lead.needs_review %}<span class="flag" title="Something about this lead needs a person to look at it">needs review</span>{% endif %}
+{% if lead.parse_mode == "tolerant" %}<span class="flag" title="The payload did not match the documented format; fields were recovered">tolerant parse</span>{% endif %}
+{% if lead.tenant_is_test %}<span class="flag" title="Belongs to a test tenant; not counted in the numbers">test</span>{% endif %}
+{%- endmacro %}
+
+{# Options of a tenant <select>. #}
+{% macro tenant_options(tenants, selected) -%}
+<option value="">All tenants</option>
+{% for tenant in tenants %}
+<option value="{{ tenant.id }}"{% if tenant.id == selected %} selected{% endif %}>{{ tenant.name }}{% if tenant.is_test %} (test){% endif %}</option>
+{% endfor %}
+{%- endmacro %}
+
+{# The "live" switch shown on pages that can reload themselves. #}
+{% macro live_switch(live) -%}
+{% if live.on %}
+<span class="live"><span class="dot" aria-hidden="true"></span>Live: reloading every {{ live.seconds }} s · <a href="{{ live.off_url }}">turn off</a></span>
+{% else %}
+<a class="small" href="{{ live.on_url }}">Go live (reload every {{ live.seconds }} s)</a>
+{% endif %}
+{%- endmacro %}

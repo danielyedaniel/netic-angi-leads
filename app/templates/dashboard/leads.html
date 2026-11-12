@@ -1,0 +1,62 @@
+{% extends "dashboard/base.html" %}
+{% from "dashboard/_macros.html" import badge, lead_flags, tenant_options %}
+{% block title %}Leads{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Leads</h1>
+  <span class="muted small">{{ leads|length }} shown{% if leads|length >= limit %} (the newest {{ limit }}; narrow the search to see older ones){% endif %}</span>
+</div>
+
+<form class="filters" method="get" action="/dashboard/leads">
+  <label>Search
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Name, email, phone, service or id">
+  </label>
+  <label>Tenant
+    <select name="tenant">{{ tenant_options(tenants, filters.tenant) }}</select>
+  </label>
+  <label>Status
+    <select name="status">
+      <option value="">Any status</option>
+      {% for status in statuses %}
+      <option value="{{ status }}"{% if status == filters.status %} selected{% endif %}>{{ status }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="check"><input type="checkbox" name="duplicates" value="1"{% if filters.duplicates %} checked{% endif %}> Duplicates only</label>
+  <label class="check"><input type="checkbox" name="review" value="1"{% if filters.review %} checked{% endif %}> Needs review</label>
+  <button type="submit">Apply</button>
+  <a class="small" href="/dashboard/leads">Clear</a>
+</form>
+
+<section class="card">
+  {% if leads %}
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Received (UTC)</th><th>Tenant</th><th>Name</th><th>Service</th><th>City, state</th>
+          <th>Status</th><th class="num">Speed to lead</th><th class="num">Fee</th><th>Flags</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lead in leads %}
+        <tr>
+          <td class="nowrap">{{ lead.received_at|dt }}</td>
+          <td>{{ lead.tenant_name }}</td>
+          <td><a href="/dashboard/leads/{{ lead.id }}">{{ lead.full_name or "(no name)" }}</a></td>
+          <td>{{ lead.task_name or "—" }}</td>
+          <td>{{ [lead.city, lead.state]|select|join(", ") or "—" }}</td>
+          <td>{{ badge(lead.status) }}</td>
+          <td class="num">{{ lead.speed_to_lead_seconds|duration }}</td>
+          <td class="num">{{ lead.fee_cents|money }}</td>
+          <td>{{ lead_flags(lead) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No leads match. {% if filters.q or filters.tenant or filters.status or filters.duplicates or filters.review %}<a href="/dashboard/leads">Clear the filters</a>{% else %}They appear here as soon as Angi posts one to the webhook.{% endif %}</p>
+  {% endif %}
+</section>
+{% endblock %}

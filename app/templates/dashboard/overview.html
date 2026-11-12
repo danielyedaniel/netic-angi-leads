@@ -1,0 +1,249 @@
+{% extends "dashboard/base.html" %}
+{% from "dashboard/_macros.html" import badge, lead_flags, tenant_options, live_switch %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+{% set funnel_counts = summary.funnel %}
+{% set cash = summary.money %}
+{% set speed = summary.speed %}
+{% set dupes = summary.duplicates %}
+
+<div class="page-head">
+  <h1>Overview</h1>
+  {{ live_switch(live) }}
+</div>
+
+{# One filter row above everything it scopes. #}
+<form class="filters" method="get" action="/dashboard">
+  <label>Tenant
+    <select name="tenant">{{ tenant_options(tenants, tenant_id) }}</select>
+  </label>
+  <label>Period
+    <select name="days">
+      <option value="7"{% if period == "7" %} selected{% endif %}>Last 7 days</option>
+      <option value="30"{% if period == "30" %} selected{% endif %}>Last 30 days</option>
+      <option value="90"{% if period == "90" %} selected{% endif %}>Last 90 days</option>
+      <option value="all"{% if period == "all" %} selected{% endif %}>All time</option>
+    </select>
+  </label>
+  {% if live.on %}<input type="hidden" name="live" value="1">{% endif %}
+  <button type="submit">Apply</button>
+</form>
+
+<section class="tiles" aria-label="Key figures">
+  <div class="tile">
+    <div class="tile-label">Leads received</div>
+    <div class="tile-value">{{ funnel_counts.received }}</div>
+    <div class="tile-note">{{ funnel_counts.unique }} unique</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Lead to booked rate</div>
+    <div class="tile-value">{{ funnel_counts.booking_rate|pct }}</div>
+    <div class="tile-note">{{ funnel_counts.booked }} of {{ funnel_counts.received }} booked</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Median speed to lead</div>
+    <div class="tile-value">{{ speed.speed_to_lead_p50_seconds|duration }}</div>
+    <div class="tile-note">90th percentile {{ speed.speed_to_lead_p90_seconds|duration }}</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Contacted within 1 minute</div>
+    <div class="tile-value">{{ speed.contacted_within_1_min|pct }}</div>
+    <div class="tile-note">within 5 minutes {{ speed.contacted_within_5_min|pct }}</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Spend on leads</div>
+    <div class="tile-value">{{ cash.spend_cents|money }}</div>
+    <div class="tile-note">{{ cash.credited_cents|money }} credited back</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Cost per booking</div>
+    <div class="tile-value">{{ cash.cost_per_booking_cents|money }}</div>
+    <div class="tile-note">per lead {{ cash.cost_per_lead_cents|money }}</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Revenue from won jobs</div>
+    <div class="tile-value">{{ cash.revenue_cents|money }}</div>
+    <div class="tile-note">{{ funnel_counts.won }} won, {{ funnel_counts.lost }} lost</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Return on spend</div>
+    <div class="tile-value">{{ cash.return_on_spend|times }}</div>
+    <div class="tile-note">revenue per $1 of lead spend</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Duplicates found</div>
+    <div class="tile-value">{{ dupes.count }}</div>
+    <div class="tile-note">{{ dupes.rate|pct }} of leads</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Claimable credit</div>
+    <div class="tile-value">{{ dupes.claimable_cents|money }}</div>
+    <div class="tile-note"><a href="/dashboard/credits">{{ dupes.open_claims }} open claim(s)</a></div>
+  </div>
+</section>
+{% if unpriced_leads %}
+{# Said next to the money tiles it qualifies, in words: a missing price must not pass for a cheap lead. #}
+<p class="muted small" role="note">
+  {{ unpriced_leads }} lead(s) in this period have no fee (none in the payload, none set on their Angi account), so they
+  count as $0 and the spend and cost figures above are understated. Set a default fee on the account's mapping on the
+  <a href="/dashboard/tenants">Tenants</a> page: it is applied to that account's unpriced leads straight away and to
+  new ones. A lead that was assigned to a tenant by hand has no Angi account, so it stays unpriced.
+</p>
+{% endif %}
+
+<div class="cols">
+  <section class="card">
+    <h2>Conversion funnel</h2>
+    {% if funnel_counts.received %}
+    <div class="funnel">
+      {% for row in funnel %}
+      <div>{{ row.label }}</div>
+      <div class="funnel-track" title="{{ row.label }}: {{ row.count }}{% if row.step_rate is not none %} ({{ row.step_rate|pct }} of {{ row.previous_label }}){% endif %}">
+        {% if row.count %}<div class="funnel-bar stage-{{ row.step }}" style="width: {{ row.width }}%"></div>{% endif %}
+      </div>
+      <div class="num"><strong>{{ row.count }}</strong></div>
+      <div class="num muted small">{% if row.previous_label %}{{ row.step_rate|pct }} of {{ row.previous_label }}{% endif %}</div>
+      {% endfor %}
+    </div>
+    <p class="muted small" style="margin: 12px 0 0">Each stage counts every lead that got at least that far. A job recorded as won counts as booked, whether it was booked through the link or by phone.</p>
+    {% else %}
+    <p class="empty">No leads in this period yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Bookings by touch</h2>
+    {% if touch.total %}
+    <p class="muted small">Which message got the booking: the first email, or a follow-up nudge.</p>
+    {# A thin bar split in two; the list underneath carries the names and the numbers. #}
+    <div class="split" role="img" aria-label="{{ touch.intro_only }} bookings after the intro email only, {{ touch.after_followup }} after a follow-up">
+      {% if touch.intro_only %}<span class="series-1" style="flex-grow: {{ touch.intro_only }}"></span>{% endif %}
+      {% if touch.after_followup %}<span class="series-2" style="flex-grow: {{ touch.after_followup }}"></span>{% endif %}
+    </div>
+    <table>
+      <tbody>
+        <tr><td><span class="swatch series-1"></span>Intro email only</td><td class="num"><strong>{{ touch.intro_only }}</strong></td><td class="num muted">{{ touch.intro_share|pct }}</td></tr>
+        <tr><td><span class="swatch series-2"></span>After a follow-up</td><td class="num"><strong>{{ touch.after_followup }}</strong></td><td class="num muted">{{ touch.followup_share|pct }}</td></tr>
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No bookings in this period yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Leads per day</h2>
+    {% if chart %}
+    <ul class="legend">
+      <li><span class="swatch received"></span>Received</li>
+      <li><span class="swatch booked"></span>Booked (counted on the day the lead arrived)</li>
+    </ul>
+    <div class="chart">
+      <div class="chart-axis" style="height: {{ chart.height }}px" aria-hidden="true">
+        {% for tick in chart.ticks %}<span style="top: {{ tick.y }}px">{{ tick.value }}</span>{% endfor %}
+      </div>
+      <svg width="100%" height="{{ chart.height }}" role="img" aria-label="Leads received and booked per day; the same numbers are in the table below.">
+        {% for tick in chart.ticks %}
+        <line class="{{ 'baseline' if tick.value == 0 else 'grid' }}" x1="0" x2="100%" y1="{{ tick.y }}" y2="{{ tick.y }}"/>
+        {% endfor %}
+        {# One hover target per day, as wide as the day's slot, so the pointer never has to hit a thin bar. #}
+        {% for day in chart.columns %}
+        <rect class="hit" x="{{ day.slot_x }}%" y="0" width="{{ chart.slot_width }}%" height="{{ chart.baseline }}"><title>{{ day.title }}</title></rect>
+        {% endfor %}
+        {# The inner <svg> clips at the baseline. Bars are drawn a corner-radius too tall,
+           so the top is rounded and the bottom sits square on the baseline. The 1px shifts leave a 2px gap between the pair. #}
+        <svg x="0" y="0" width="100%" height="{{ chart.baseline }}">
+          {% for day in chart.columns %}
+          {% if day.received %}<rect class="bar received" x="{{ day.received.x }}%" y="{{ day.received.y }}" width="{{ chart.bar_width }}%" height="{{ day.received.height }}" rx="{{ chart.corner }}" transform="translate(-1 0)"/>{% endif %}
+          {% if day.booked %}<rect class="bar booked" x="{{ day.booked.x }}%" y="{{ day.booked.y }}" width="{{ chart.bar_width }}%" height="{{ day.booked.height }}" rx="{{ chart.corner }}" transform="translate(1 0)"/>{% endif %}
+          {% endfor %}
+        </svg>
+        {% for day in chart.columns %}
+        {% if day.label %}<text x="{{ day.label_x }}%" y="{{ chart.baseline + 16 }}" text-anchor="{{ day.anchor }}">{{ day.label }}</text>{% endif %}
+        {% endfor %}
+      </svg>
+    </div>
+    {% if chart.truncated %}<p class="muted small">The chart shows the most recent {{ chart.max_days }} days; the table has every day.</p>{% endif %}
+    <details>
+      <summary>Show as a table</summary>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Day (tenant's local date)</th><th class="num">Received</th><th class="num">Booked</th></tr></thead>
+          <tbody>
+            {% for row in chart.table|reverse %}
+            <tr><td>{{ row.day }}</td><td class="num">{{ row.received }}</td><td class="num">{{ row.booked }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+    {% else %}
+    <p class="empty">No leads in this period yet.</p>
+    {% endif %}
+  </section>
+</div>
+
+<div class="cols">
+  <section class="card">
+    <h2>By service</h2>
+    {% if summary.by_task %}
+    {% if summary.by_task|sum(attribute="received") < funnel_counts.received %}<p class="muted small">The {{ summary.by_task|length }} services with the most leads; {{ funnel_counts.received - summary.by_task|sum(attribute="received") }} lead(s) for other services are not listed.</p>{% endif %}
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Service</th><th class="num">Received</th><th class="num">Booked</th><th class="num">Booking rate</th><th class="num">Spend</th><th class="num">Cost per booking</th></tr></thead>
+        <tbody>
+          {% for row in summary.by_task %}
+          <tr><td>{{ row.key }}</td><td class="num">{{ row.received }}</td><td class="num">{{ row.booked }}</td><td class="num">{{ row.booking_rate|pct }}</td><td class="num">{{ row.spend_cents|money }}</td><td class="num">{{ row.cost_per_booking_cents|money }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty">No leads in this period yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>By tenant</h2>
+    {% if summary.by_tenant %}
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Tenant</th><th class="num">Received</th><th class="num">Booked</th><th class="num">Booking rate</th><th class="num">Spend</th><th class="num">Cost per booking</th></tr></thead>
+        <tbody>
+          {% for row in summary.by_tenant %}
+          <tr><td>{{ row.key }}</td><td class="num">{{ row.received }}</td><td class="num">{{ row.booked }}</td><td class="num">{{ row.booking_rate|pct }}</td><td class="num">{{ row.spend_cents|money }}</td><td class="num">{{ row.cost_per_booking_cents|money }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty">No leads in this period yet.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="card">
+  <h2>Recent leads</h2>
+  {% if recent %}
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Received (UTC)</th><th>Name</th><th>Service</th><th>Tenant</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for lead in recent %}
+        <tr>
+          <td class="nowrap">{{ lead.received_at|dt }}</td>
+          <td><a href="/dashboard/leads/{{ lead.id }}">{{ lead.full_name or "(no name)" }}</a> {{ lead_flags(lead) }}</td>
+          <td>{{ lead.task_name or "—" }}</td>
+          <td>{{ lead.tenant_name }}</td>
+          <td>{{ badge(lead.status) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="small" style="margin: 10px 0 0"><a href="/dashboard/leads{% if tenant_id %}?tenant={{ tenant_id|urlencode }}{% endif %}">All leads</a></p>
+  {% else %}
+  <p class="empty">No leads in this period yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

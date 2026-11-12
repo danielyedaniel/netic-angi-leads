@@ -1,0 +1,227 @@
+{% extends "dashboard/base.html" %}
+{% from "dashboard/_macros.html" import badge, live_switch %}
+{% block title %}Monitoring{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Monitoring</h1>
+  {{ live_switch(live) }}
+</div>
+
+<div class="notice {{ overall|tone }}" role="status">
+  {{ badge(overall, {"ok": "all checks pass", "warning": "needs attention", "critical": "action needed"}[overall]) }}
+  <span>
+    {% if overall == "ok" %}Every health check passes.
+    {% else %}{{ checks|rejectattr("status", "equalto", "ok")|list|length }} of {{ checks|length }} health checks are not passing.{% endif %}
+    {% if open %}{{ open|length }} open alert(s) below still need a look.{% else %}No open alerts.{% endif %}
+    <span class="muted">Background worker {{ "running" if worker_running else "not running" }}{% if last_run %}; checks last ran {{ last_run|dt_seconds }} UTC{% endif %}.</span>
+  </span>
+</div>
+
+<section class="card">
+  <h2>Health checks</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Check</th><th>Status</th><th>Summary</th></tr></thead>
+      <tbody>
+        {% for check in checks %}
+        <tr>
+          <td class="mono">{{ check.name }}</td>
+          <td>{{ badge(check.status) }}</td>
+          <td>{{ check.summary }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="small muted" style="margin: 10px 0 0">For machines, with the admin token: <a href="/metrics">/metrics</a> (Prometheus) and <a href="/admin/api/health">/admin/api/health</a> (JSON).</p>
+</section>
+
+<section class="card">
+  <h2>Open alerts</h2>
+  {% if open %}
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Severity</th><th>Alert</th><th class="num">Count</th><th>First seen (UTC)</th><th>Last seen (UTC)</th><th></th></tr></thead>
+      <tbody>
+        {% for alert in open %}
+        <tr>
+          <td>{{ badge(alert.severity) }}</td>
+          <td>
+            {{ alert.title }}
+            <details>
+              <summary>Detail</summary>
+              <pre>{{ alert.detail|pretty_json }}</pre>
+            </details>
+          </td>
+          <td class="num">{{ alert.count }}</td>
+          <td class="nowrap">{{ alert.first_seen_at|dt }}</td>
+          <td class="nowrap">{{ alert.last_seen_at|dt }}</td>
+          <td>
+            <form method="post" action="/dashboard/alerts/{{ alert.id }}/resolve">
+              <input type="hidden" name="next" value="{{ here }}">
+              <button type="submit">Resolve</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No open alerts.</p>
+  {% endif %}
+
+  {% if resolved %}
+  <details style="margin-top: 12px">
+    <summary>Recently resolved ({{ resolved|length }})</summary>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Severity</th><th>Alert</th><th class="num">Count</th><th>First seen (UTC)</th><th>Last seen (UTC)</th><th>Resolved (UTC)</th></tr></thead>
+        <tbody>
+          {% for alert in resolved %}
+          <tr>
+            <td>{{ alert.severity }}</td>
+            <td>
+              {{ alert.title }}
+              <details>
+                <summary>Detail</summary>
+                <pre>{{ alert.detail|pretty_json }}</pre>
+              </details>
+            </td>
+            <td class="num">{{ alert.count }}</td>
+            <td class="nowrap">{{ alert.first_seen_at|dt }}</td>
+            <td class="nowrap">{{ alert.last_seen_at|dt }}</td>
+            <td class="nowrap">{{ alert.resolved_at|dt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Payload shapes seen</h2>
+  <p class="muted small">Every distinct way a payload has matched, or deviated from, Angi's documented formats. A new drifted shape is the first sign of a format change.</p>
+  {% if shapes %}
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Shape</th><th>Format</th><th>Parse mode</th><th>Signature</th><th>Differences</th><th>First seen (UTC)</th><th>Last seen (UTC)</th><th class="num">Count</th></tr></thead>
+      <tbody>
+        {% for shape in shapes %}
+        <tr>
+          <td>{{ badge("clean" if shape.is_clean else "drifted") }}</td>
+          <td>{{ shape.detected_format }}</td>
+          <td>{{ shape.parse_mode }}</td>
+          <td class="mono">{{ shape.signature }}</td>
+          <td>
+            {% for kind, label in [("unknown", "New fields"), ("missing", "Missing"), ("mistyped", "Type changed"), ("recovered", "Recovered by alias")] %}
+            {% if shape.detail[kind] %}<div class="small"><span class="muted">{{ label }}:</span> {{ shape.detail[kind]|join(", ") }}</div>{% endif %}
+            {% endfor %}
+            {% if shape.is_clean %}<span class="muted">none</span>{% endif %}
+          </td>
+          <td class="nowrap">{{ shape.first_seen_at|dt }}</td>
+          <td class="nowrap">{{ shape.last_seen_at|dt }}</td>
+          <td class="num">{{ shape.seen_count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No payloads received yet.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="page-head" style="margin-bottom: 8px">
+    <h2 style="margin: 0">Recent webhook events</h2>
+    <form method="post" action="/dashboard/events/replay-quarantined">
+      <input type="hidden" name="next" value="{{ here }}">
+      <button type="submit"{% if not quarantined %} disabled{% endif %}>Replay all quarantined ({{ quarantined }})</button>
+    </form>
+  </div>
+  <form class="filters" method="get" action="/dashboard/monitoring">
+    <label>Status
+      <select name="status">
+        <option value="">Any status</option>
+        {% for option in event_statuses %}
+        <option value="{{ option }}"{% if option == status %} selected{% endif %}>{{ option|replace("_", " ") }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if live.on %}<input type="hidden" name="live" value="1">{% endif %}
+    <button type="submit">Apply</button>
+  </form>
+  {% if events %}
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Received (UTC)</th><th>Status</th><th>Reason</th><th>Format</th><th>Parse mode</th><th class="num">Processing</th><th>Tenant</th><th>Lead</th><th>Body</th></tr></thead>
+      {# One <tbody> per event: a row of facts and, for an event that still needs somebody, a row saying what it waits for with the buttons to deal with it. #}
+      {% for event in events %}
+      {% set actionable = event.status in replayable or event.status in discardable %}
+      <tbody>
+        <tr{% if actionable %} class="continues"{% endif %}>
+          <td class="nowrap">{{ event.received_at|dt_seconds }}</td>
+          <td>{{ badge(event.status) }}</td>
+          <td>{{ event.status_reason or "—" }}</td>
+          <td>{{ event.detected_format or "—" }}</td>
+          <td>{{ event.parse_mode or "—" }}</td>
+          <td class="num">{% if event.processing_ms is not none %}{{ "%.1f"|format(event.processing_ms) }} ms{% else %}—{% endif %}</td>
+          <td>{{ event.tenant_name or "—" }}</td>
+          <td>{% if event.lead_id %}<a class="mono small" href="/dashboard/leads/{{ event.lead_id }}">{{ event.lead_id }}</a>{% else %}—{% endif %}</td>
+          <td style="min-width: 160px">
+            <details>
+              <summary>Preview</summary>
+              <pre>{{ event.body_preview }}</pre>
+            </details>
+          </td>
+        </tr>
+        {% if actionable %}
+        <tr>
+          <td colspan="9">
+            <div class="inline-form">
+              {# A quarantined event says in words what it is waiting for. #}
+              {% set why = event.status_reason|quarantine_reason if event.status == "quarantined" else none %}
+              {% if why %}<span class="small" style="flex: 1 1 320px">{{ why }}</span>{% endif %}
+              {% if event.status in replayable %}
+              <form method="post" action="/dashboard/events/{{ event.id }}/replay">
+                <input type="hidden" name="next" value="{{ here }}">
+                <button type="submit">Replay</button>
+              </form>
+              {% endif %}
+              {# No Angi account id in the payload: no mapping can route it, so a person names the tenant. #}
+              {% if event.status == "quarantined" and event.status_reason == needs_tenant %}
+              <form class="inline-form" method="post" action="/dashboard/events/{{ event.id }}/assign">
+                <input type="hidden" name="next" value="{{ here }}">
+                <label>This lead is for
+                  <select name="tenant_id" required>
+                    <option value="">Choose a tenant…</option>
+                    {% for tenant in tenants %}
+                    <option value="{{ tenant.id }}">{{ tenant.name }}{% if tenant.is_test %} (test){% endif %}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <button type="submit">Assign and replay</button>
+              </form>
+              {% endif %}
+              {% if event.status in discardable %}
+              <form method="post" action="/dashboard/events/{{ event.id }}/discard">
+                <input type="hidden" name="next" value="{{ here }}">
+                <button type="submit" title="It will never be a lead (a ping, junk, a test). The stored request is kept.">Discard</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No webhook events{% if status %} with this status{% endif %} yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

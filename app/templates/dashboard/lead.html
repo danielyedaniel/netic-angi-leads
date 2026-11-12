@@ -1,0 +1,242 @@
+{% extends "dashboard/base.html" %}
+{% from "dashboard/_macros.html" import badge, lead_flags %}
+{% block title %}{{ lead.full_name or "Lead" }}{% endblock %}
+{% block content %}
+<p class="small"><a href="/dashboard/leads">← All leads</a></p>
+<div class="page-head">
+  <h1>{{ lead.full_name or "(no name)" }} {{ badge(lead.status) }} {{ lead_flags(lead) }}</h1>
+  <span class="muted small mono">{{ lead.id }}</span>
+</div>
+
+<div class="cols">
+  <section class="card">
+    <h2>Contact</h2>
+    <dl>
+      <dt>Name</dt><dd>{{ lead.full_name or "—" }}</dd>
+      <dt>Email</dt>
+      <dd>
+        {# Only an address we validated ourselves becomes a link; the text as received is shown either way. #}
+        {% if lead.email_normalized %}<a href="mailto:{{ lead.email_normalized }}">{{ lead.email }}</a>
+        {% else %}{{ lead.email or "—" }}{% if lead.email %} <span class="flag">not a usable address</span>{% endif %}{% endif %}
+      </dd>
+      <dt>Phone</dt>
+      <dd>
+        {% if lead.phone_normalized %}<a href="tel:{{ lead.phone_normalized }}">{{ lead.phone }}</a>{% else %}{{ lead.phone or "—" }}{% endif %}
+        {% if lead.phone_ext %} ext. {{ lead.phone_ext }}{% endif %}
+        {% if lead.phone_is_masked %} <span class="flag" title="A temporary Angi proxy number, not the homeowner's own">masked</span>{% endif %}
+      </dd>
+      {% if lead.secondary_phone %}<dt>Second phone</dt><dd>{{ lead.secondary_phone }}</dd>{% endif %}
+      <dt>Address</dt>
+      <dd>{{ [lead.address_line1, lead.address_line2, lead.city, lead.state, lead.postal_code]|select|join(", ") or "—" }}</dd>
+      <dt>Automated contact</dt>
+      <dd>{% if lead.automated_contact_ok is none %}not stated{% elif lead.automated_contact_ok %}consented{% else %}no consent{% endif %}</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Request</h2>
+    <dl>
+      <dt>Service</dt><dd>{{ lead.task_name or "—" }}</dd>
+      {% if lead.market %}<dt>Market</dt><dd>{{ lead.market }}</dd>{% endif %}
+      {% if lead.urgency %}<dt>Urgency</dt><dd>{{ lead.urgency }}</dd>{% endif %}
+      <dt>Comments</dt><dd>{{ lead.comments or "—" }}</dd>
+      {% if lead.match_type %}<dt>Match type</dt><dd>{{ lead.match_type }}</dd>{% endif %}
+      {% if lead.lead_description %}<dt>Lead type</dt><dd>{{ lead.lead_description }}</dd>{% endif %}
+      {% if lead.lead_source_detail %}<dt>Lead source</dt><dd>{{ lead.lead_source_detail }}</dd>{% endif %}
+      {% if lead.contact_status %}<dt>Contact status</dt><dd>{{ lead.contact_status }}</dd>{% endif %}
+      <dt>Fee</dt>
+      <dd>{{ lead.fee_cents|money }}{% if lead.fee_source == "account_default" %} <span class="muted small">(the account's default fee; the payload carried none)</span>{% endif %}</dd>
+      {# Shown as text, never as a link: the URL comes from the payload. #}
+      {% if lead.trusted_form_url %}<dt>TrustedForm</dt><dd class="mono">{{ lead.trusted_form_url }}</dd>{% endif %}
+    </dl>
+    {% if lead.interview %}
+    <h3 style="margin-top: 14px">Interview answers</h3>
+    <dl>
+      {% for item in lead.interview %}<dt>{{ item.question }}</dt><dd>{{ item.answer }}</dd>{% endfor %}
+    </dl>
+    {% endif %}
+    {% if lead.extras %}
+    <h3 style="margin-top: 14px">Other fields in the payload</h3>
+    <dl>
+      {% for key, value in lead.extras|dictsort %}<dt class="mono">{{ key }}</dt><dd>{{ value|plain }}</dd>{% endfor %}
+    </dl>
+    {% endif %}
+  </section>
+</div>
+
+<div class="cols">
+  <section class="card">
+    <h2>Routing</h2>
+    <dl>
+      <dt>Tenant</dt><dd>{{ tenant.name if tenant else "—" }} <span class="muted small mono">{{ lead.tenant_id }}</span></dd>
+      <dt>Angi account id</dt><dd class="mono">{{ lead.external_account_id or "—" }}</dd>
+      {% if lead.external_account_name %}<dt>Angi account name</dt><dd>{{ lead.external_account_name }}</dd>{% endif %}
+      <dt>Routed by</dt><dd>{{ lead.routed_by or "—" }}</dd>
+      <dt>Format</dt><dd>{{ lead.source_format }}</dd>
+      <dt>Parse mode</dt><dd>{{ lead.parse_mode }}</dd>
+      <dt>Angi lead id</dt><dd class="mono">{{ lead.external_lead_id or "—" }}</dd>
+      {% if lead.external_request_id %}<dt>Service request id</dt><dd class="mono">{{ lead.external_request_id }}</dd>{% endif %}
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Funnel</h2>
+    <dl>
+      <dt>Received</dt><dd>{{ lead.received_at|dt_seconds }} UTC</dd>
+      <dt>First contacted</dt>
+      <dd>{{ lead.first_contacted_at|dt_seconds }}{% if lead.first_contacted_at %} <span class="muted small">({{ lead.speed_to_lead_seconds|duration }} after it arrived)</span>{% endif %}</dd>
+      <dt>Engaged</dt><dd>{{ lead.first_engaged_at|dt_seconds }}</dd>
+      <dt>Booked</dt>
+      <dd>{{ lead.booked_at|dt_seconds }}{% if lead.outcome == "won" and not lead.booked_at %} <span class="muted small">(no online booking; a won job counts as booked in the numbers)</span>{% endif %}</dd>
+      <dt>Closed</dt>
+      <dd>
+        {{ lead.closed_at|dt_seconds }}
+        {% if lead.outcome %}{{ badge(lead.outcome) }}{% endif %}
+        {% if lead.outcome == "won" and lead.job_value_cents is not none %} job value {{ lead.job_value_cents|money }}{% endif %}
+        {% if lead.outcome_reason %} <span class="muted">{{ lead.outcome_reason }}</span>{% endif %}
+      </dd>
+    </dl>
+  </section>
+</div>
+
+<div class="cols">
+  <section class="card">
+    <h2>Record the outcome</h2>
+    <form method="post" action="/dashboard/leads/{{ lead.id }}/outcome">
+      <input type="hidden" name="next" value="{{ here }}">
+      <div class="fields">
+        <div>
+          <label class="check"><input type="radio" name="outcome" value="won" required{% if lead.outcome == "won" %} checked{% endif %}> Won</label>
+          <label>Job value in dollars
+            <input type="text" name="job_value" inputmode="decimal" placeholder="1250.00">
+          </label>
+        </div>
+        <div>
+          <label class="check"><input type="radio" name="outcome" value="lost" required{% if lead.outcome == "lost" %} checked{% endif %}> Lost</label>
+          <label>Reason
+            <input type="text" name="reason" maxlength="500" placeholder="Went with another company">
+          </label>
+        </div>
+      </div>
+      <p style="margin: 12px 0 0"><button class="primary" type="submit">Record outcome</button></p>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Booking</h2>
+    {% if appointment %}
+    <p><strong>{{ appointment_label }}</strong> <span class="muted small">({{ appointment.timezone }})</span></p>
+    {% else %}
+    <p class="muted">No appointment booked yet.</p>
+    {% endif %}
+    <label for="booking-link">The homeowner's booking link</label>
+    <div class="copy-row">
+      <input id="booking-link" type="text" readonly value="{{ booking_url }}">
+      <button type="button" data-copy="booking-link" hidden>Copy</button>
+    </div>
+    <p class="muted small" style="margin: 6px 0 0">Opening this link yourself is recorded as the homeowner engaging.</p>
+  </section>
+</div>
+
+{% if lead.is_duplicate or duplicates or claim %}
+<section class="card">
+  <h2>Duplicates</h2>
+  {% if original %}
+  <p>This lead duplicates <a href="/dashboard/leads/{{ original.id }}">{{ original.full_name or "(no name)" }}</a>,
+     received {{ original.received_at|dt }} UTC{% if lead.duplicate_matched_on %} (same {{ lead.duplicate_matched_on|join(" and ")|replace("_", " ") }}){% endif %}.</p>
+  {% endif %}
+  {% if claim %}
+  <p>Credit claim: {{ badge(claim.status) }} {{ claim.amount_cents|money }}, request by {{ claim.request_deadline|dt }} UTC.
+     <a href="/dashboard/credits?tenant={{ lead.tenant_id|urlencode }}#claim-{{ claim.id }}">Open the claim</a></p>
+  {% endif %}
+  {% if duplicates %}
+  <p style="margin-bottom: 4px">Later leads from the same homeowner:</p>
+  <ul style="margin: 0; padding-left: 20px">
+    {% for other in duplicates %}
+    <li><a href="/dashboard/leads/{{ other.id }}">{{ other.full_name or "(no name)" }}</a>, {{ other.task_name or "no service named" }}, received {{ other.received_at|dt }} UTC</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>Timeline</h2>
+  {% if events %}
+  <ol class="timeline">
+    {% for event in events %}
+    <li>
+      <span class="muted nowrap">{{ event.occurred_at|dt_seconds }}</span>
+      <div>
+        <strong>{{ event.type|event_label }}</strong>
+        {% set details = event.data|details %}
+        {% if details %}
+        <div class="muted small">
+          {% for label, text in details %}<span class="nowrap">{{ label }}:</span> {{ text }}{% if not loop.last %} · {% endif %}{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="empty">Nothing recorded yet.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Messages</h2>
+  {% if messages %}
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Template</th><th>Status</th><th>To</th><th>Send after (UTC)</th><th>Sent (UTC)</th><th class="num">Attempts</th><th>Last error</th><th>Copy</th><th></th></tr></thead>
+      <tbody>
+        {% for message in messages %}
+        <tr>
+          <td>{{ message.template|replace("_", " ") }}{% if message.sequence %} #{{ message.sequence }}{% endif %}</td>
+          <td>{{ badge(message.status) }}</td>
+          <td>{{ message.to_address }}</td>
+          <td class="nowrap">{{ message.send_after|dt }}</td>
+          <td class="nowrap">{{ message.sent_at|dt_seconds }}</td>
+          <td class="num">{{ message.attempts }} / {{ message.max_attempts }}</td>
+          <td>{{ message.last_error or "—" }}</td>
+          <td>
+            {% if message.subject or message.body_text %}
+            <details>
+              <summary>What was sent</summary>
+              <p style="margin: 0"><strong>{{ message.subject }}</strong></p>
+              <pre>{{ message.body_text }}</pre>
+            </details>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {# Only an email we gave up on can be sent again (after fixing the mail credentials, say). #}
+            {% if message.status == "failed" %}
+            <form method="post" action="/dashboard/messages/{{ message.id }}/retry">
+              <input type="hidden" name="next" value="{{ here }}">
+              <button type="submit">Retry</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No messages were queued for this lead.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Raw webhook payloads</h2>
+  {% for event in webhook_events %}
+  <details>
+    <summary>{{ event.received_at|dt_seconds }} UTC · {{ event.status|replace("_", " ") }}{% if event.status_reason %} ({{ event.status_reason }}){% endif %} · {{ event.detected_format or "unknown format" }}{% if event.parse_mode %}, {{ event.parse_mode }}{% endif %}</summary>
+    <pre>{{ event.raw_body|pretty_json }}</pre>
+  </details>
+  {% else %}
+  <p class="empty">No stored webhook request is linked to this lead.</p>
+  {% endfor %}
+</section>
+{% endblock %}

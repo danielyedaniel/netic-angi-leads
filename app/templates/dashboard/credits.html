@@ -1,0 +1,142 @@
+{% extends "dashboard/base.html" %}
+{% from "dashboard/_macros.html" import badge, tenant_options %}
+{% block title %}Credits{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Duplicate-lead credits</h1>
+  <a class="button primary" href="{{ export_url }}">Export CSV</a>
+</div>
+
+<p class="muted" style="max-width: 78ch">
+  A duplicate is the same homeowner charged twice within {{ rules.duplicate_window_days }} days, through the same
+  Angi account. Angi must be asked for the credit within {{ rules.request_window_days }} days of the charge, and
+  expects the business to have tried to call the homeowner within {{ rules.contact_sla_hours }} hours. What is
+  recorded here is the first email, which is what this system sends; mention a call if one was made. Requests
+  are filed by a person in the Angi for Pros app (there is no API), so each claim below comes with text ready
+  to paste.
+</p>
+
+<form class="filters" method="get" action="/dashboard/credits">
+  <label>Tenant
+    <select name="tenant">{{ tenant_options(tenants, filters.tenant) }}</select>
+  </label>
+  <label>Status
+    <select name="status">
+      <option value="">Any status</option>
+      {% for status in statuses %}
+      <option value="{{ status }}"{% if status == filters.status %} selected{% endif %}>{{ status }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit">Apply</button>
+</form>
+
+<section class="tiles" aria-label="Credit claim totals">
+  <div class="tile">
+    <div class="tile-label">Ready to file</div>
+    <div class="tile-value">{{ summary.ready_to_file_cents|money }}</div>
+    <div class="tile-note">{{ summary.ready_to_file_count }} claim(s)</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Submitted to Angi</div>
+    <div class="tile-value">{{ summary.by_status.submitted.amount_cents|money }}</div>
+    <div class="tile-note">{{ summary.by_status.submitted.count }} claim(s) awaiting an answer</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Recovered</div>
+    <div class="tile-value">{{ summary.recovered_cents|money }}</div>
+    <div class="tile-note">{{ summary.by_status.credited.count }} claim(s) credited</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Expiring within {{ warning_days }} days</div>
+    <div class="tile-value">{{ summary.expiring_soon|length }}</div>
+    <div class="tile-note">ready to file, deadline close</div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Claims, soonest deadline first</h2>
+  {% if claims %}
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Tenant</th><th>Duplicate lead</th><th>Original lead</th><th>Matched on</th><th class="num">Apart</th>
+          <th>Confidence</th><th class="num">Amount</th><th>Request by (UTC)</th><th>Eligibility</th><th>Status</th>
+        </tr>
+      </thead>
+      {# One <tbody> per claim: a row of facts, then a row with the text to paste and the form to update it. #}
+      {% for claim in claims %}
+      {% set check = claim.eligibility %}
+      {# "Urgent" = still to be filed and the deadline is a week away or less. The claim is tinted and says so in bold. #}
+      {% set urgent = claim.status == "detected" and check.days_left is not none and check.days_left <= warning_days %}
+      <tbody id="claim-{{ claim.id }}"{% if urgent %} class="attention"{% endif %}>
+        <tr class="continues">
+          <td>{{ claim.tenant_name }}</td>
+          <td>
+            <a href="/dashboard/leads/{{ claim.lead_id }}">{{ claim.dup_name or "(no name)" }}</a>
+            <div class="muted small mono">{{ claim.dup_angi_lead_id or "no Angi id" }}</div>
+            <div class="muted small nowrap">{{ claim.dup_received_at|dt }}</div>
+          </td>
+          <td>
+            {% if claim.original_lead_id %}
+            <a class="mono small" href="/dashboard/leads/{{ claim.original_lead_id }}">{{ claim.orig_angi_lead_id or "no Angi id" }}</a>
+            <div class="muted small nowrap">{{ claim.orig_received_at|dt }}</div>
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ claim.matched_on|join(", ")|replace("_", " ") or "—" }}</td>
+          <td class="num">{{ claim.hours_apart|gap }}</td>
+          <td>{{ claim.confidence }}</td>
+          <td class="num">{{ claim.amount_cents|money }}{% if claim.status == "credited" %}<div class="muted small">credited {{ claim.credited_cents|money }}</div>{% endif %}</td>
+          <td class="nowrap">
+            {{ claim.request_deadline|dt }}
+            {# The countdown is for a claim still to be filed; once filed or closed the deadline no longer matters. #}
+            {% if claim.status == "detected" %}<div class="small{% if not urgent %} muted{% endif %}">{% if urgent %}<strong>{{ check.days_left|days_left }}</strong>{% else %}{{ check.days_left|days_left }}{% endif %}</div>{% endif %}
+          </td>
+          <td style="min-width: 180px">
+            {# Eligibility is advice for filing; a claim Angi has answered (or that was dismissed) needs none. #}
+            {% if claim.status in ("detected", "submitted") %}
+            {% if check.eligible %}{{ badge("ok", "eligible") }}{% else %}{{ badge("warning", "not eligible yet") }}{% endif %}
+            {% for line in check.blockers %}<div class="small">{{ line }}</div>{% endfor %}
+            {% for line in check.notes %}<div class="small muted">{{ line }}</div>{% endfor %}
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+          <td>{{ badge(claim.status) }}</td>
+        </tr>
+        <tr>
+          <td colspan="10">
+            <div class="claim-actions">
+              <details>
+                <summary>Credit request text</summary>
+                <p id="evidence-{{ claim.id }}" style="margin: 0 0 6px">{{ claim.evidence }}</p>
+                <button type="button" data-copy="evidence-{{ claim.id }}" hidden>Copy</button>
+              </details>
+              <form class="inline-form" method="post" action="/dashboard/credits/{{ claim.id }}/status">
+                <input type="hidden" name="next" value="{{ here }}">
+                <label>Move to
+                  <select name="status" required>
+                    <option value="">Choose…</option>
+                    <option value="submitted">submitted</option>
+                    <option value="credited">credited</option>
+                    <option value="denied">denied</option>
+                    <option value="dismissed">dismissed</option>
+                    <option value="detected">detected (reopen)</option>
+                  </select>
+                </label>
+                <label>Credited $ (if credited)
+                  <input type="text" name="credited" inputmode="decimal" size="9" placeholder="full fee">
+                </label>
+                <button type="submit">Save</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+      {% endfor %}
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No credit claims{% if filters.tenant or filters.status %} match these filters{% endif %}. One is opened automatically whenever a tenant is charged for a homeowner it already has.</p>
+  {% endif %}
+</section>
+{% endblock %}
