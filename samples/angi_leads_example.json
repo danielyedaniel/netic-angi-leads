@@ -1,0 +1,43 @@
+{
+  "name": "Priya Raman",
+  "firstName": "Priya",
+  "lastName": "Raman",
+  "address": "1560 Gaylord Street",
+  "city": "Denver",
+  "stateProvince": "CO",
+  "postalCode": "80206",
+  "primaryPhone": "7205550119",
+  "phoneExt": "",
+  "secondaryPhone": null,
+  "secondaryPhoneExt": "",
+  "email": "priya.raman@example.com",
+  "srOid": 284417306,
+  "leadOid": 613305872,
+  "fee": 42.5,
+  "taskName": "Central A/C - Repair",
+  "comments": "The AC runs all day but the house never gets below 80. The outdoor unit is making a loud buzzing noise.",
+  "matchType": "Lead",
+  "leadDescription": "Standard",
+  "spEntityId": 12345678,
+  "spCompanyName": "Summit Heating & Air",
+  "leadSource": "HomeAdvisor",
+  "trustedFormUrl": "https://cert.trustedform.com/5b0d9c1e7a2f4c63885e1d2f3a4b5c6d",
+  "primaryPhoneDetails": {
+    "maskedNumber": false
+  },
+  "automatedContactCompliant": true,
+  "interview": [
+    {
+      "question": "What kind of location is this?",
+      "answer": "Home/Residence"
+    },
+    {
+      "question": "Which best describes the problem?",
+      "answer": "Runs but does not cool"
+    },
+    {
+      "question": "When do you need this work done?",
+      "answer": "Within 1 week"
+    }
+  ]
+}

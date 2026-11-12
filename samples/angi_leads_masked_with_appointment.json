@@ -1,0 +1,51 @@
+{
+  "name": "Thomas Reed",
+  "firstName": "Thomas",
+  "lastName": "Reed",
+  "address": "3321 Zuni Street",
+  "city": "Denver",
+  "stateProvince": "CO",
+  "postalCode": "80211",
+  "primaryPhone": "7205550171",
+  "phoneExt": "4412",
+  "secondaryPhone": null,
+  "secondaryPhoneExt": "",
+  "email": "thomas.reed@example.com",
+  "srOid": 284419950,
+  "leadOid": 613311204,
+  "fee": 61.0,
+  "taskName": "Gas Furnace - Install or Replace",
+  "comments": "Replacing a 20 year old furnace before winter. Booked the estimate visit on Angi.",
+  "matchType": "Instant Booking",
+  "leadDescription": "Exact Match",
+  "spEntityId": 23456789,
+  "spCompanyName": "Summit Heating & Air - Lakewood",
+  "contactStatus": "New Appt - Transferred",
+  "crmKey": "tnt_summit",
+  "leadSource": "Angi",
+  "trustedFormUrl": "https://cert.trustedform.com/9a8b7c6d5e4f40312213f4e5d6c7b8a9",
+  "primaryPhoneDetails": {
+    "maskedNumber": true,
+    "smsEnabled": true,
+    "expirationDateTime": "2026-12-11T17:30:00Z"
+  },
+  "automatedContactCompliant": "false",
+  "interview": [
+    {
+      "question": "What type of furnace do you want installed?",
+      "answer": "Gas"
+    },
+    {
+      "question": "Is this an emergency?",
+      "answer": "No"
+    }
+  ],
+  "appointment": {
+    "appointmentOid": 77120045,
+    "status": "Confirmed",
+    "type": "Service",
+    "start": "2026-11-16T16:00:00Z",
+    "end": "2026-11-16T18:00:00Z",
+    "external_id": "angi-appt-77120045"
+  }
+}

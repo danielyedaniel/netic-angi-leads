@@ -1,0 +1,14 @@
+{
+  "lead": {
+    "contact": {
+      "name": "Olivia Chen",
+      "email": "olivia.chen@example.com",
+      "phone": "(317) 555-0184"
+    },
+    "service": "Recurring house cleaning",
+    "message": "Weekly cleaning for a four bedroom house. We have two dogs.",
+    "zip": "46220",
+    "provider_id": "123456",
+    "submitted_at": "2026-11-11T14:05:00Z"
+  }
+}
