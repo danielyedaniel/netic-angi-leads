@@ -9,13 +9,13 @@
 
 <form class="filters" method="get" action="/dashboard/leads">
   <label>Search
-    <input type="search" name="q" value="{{ filters.q }}" placeholder="Name, email, phone, service or id">
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Search name, email, phone, service or id" aria-label="Search leads">
   </label>
   <label>Tenant
-    <select name="tenant">{{ tenant_options(tenants, filters.tenant) }}</select>
+    <select name="tenant" aria-label="Tenant">{{ tenant_options(tenants, filters.tenant) }}</select>
   </label>
   <label>Status
-    <select name="status">
+    <select name="status" aria-label="Status">
       <option value="">Any status</option>
       {% for status in statuses %}
       <option value="{{ status }}"{% if status == filters.status %} selected{% endif %}>{{ status }}</option>
@@ -25,7 +25,7 @@
   <label class="check"><input type="checkbox" name="duplicates" value="1"{% if filters.duplicates %} checked{% endif %}> Duplicates only</label>
   <label class="check"><input type="checkbox" name="review" value="1"{% if filters.review %} checked{% endif %}> Needs review</label>
   <button type="submit">Apply</button>
-  <a class="small" href="/dashboard/leads">Clear</a>
+  {% if filters.q or filters.tenant or filters.status or filters.duplicates or filters.review %}<a class="clear" href="/dashboard/leads">Clear filters</a>{% endif %}
 </form>
 
 <section class="card">

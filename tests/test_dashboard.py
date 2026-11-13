@@ -295,7 +295,7 @@ def test_empty_overview_says_so_instead_of_drawing_empty_charts(client):
     assert tile(html, "Lead to booked rate") == "—"
     assert tile(html, "Median speed to lead") == "—"
     assert tile(html, "Cost per booking") == "—"
-    assert "<svg" not in html
+    assert html.count("<svg") == 1  # the logo in the sidebar, and no chart
     assert html.count("No leads in this period yet.") >= 3
     assert "No bookings in this period yet." in html
 
@@ -469,7 +469,7 @@ def test_overview_tables_break_the_numbers_down_by_service_and_tenant(client, sc
     # Rule: "By service" and "By tenant" list received / booked / rate / spend / cost per booking.
     html = get(client, "/dashboard").text
     by_service = html[html.index("<h2>By service</h2>"):html.index("<h2>By tenant</h2>")]
-    by_tenant = html[html.index("<h2>By tenant</h2>"):html.index("<h2>Recent leads</h2>")]
+    by_tenant = html[html.index("<h2>By tenant</h2>"):]
     assert re.search(r"<td>House Cleaning</td><td[^>]*>3</td><td[^>]*>1</td><td[^>]*>33.3%</td>"
                      r"<td[^>]*>\$84.00</td><td[^>]*>\$84.00</td>", by_service)
     assert re.search(r"<td>Central A/C - Repair</td><td[^>]*>1</td><td[^>]*>0</td><td[^>]*>0%</td>"
@@ -481,7 +481,7 @@ def test_overview_tables_break_the_numbers_down_by_service_and_tenant(client, sc
 def test_overview_lists_recent_leads_linking_to_their_detail(client, scene):
     # Rule: the newest leads are one click away from their detail page.
     html = get(client, "/dashboard").text
-    recent = html[html.index("<h2>Recent leads</h2>"):]
+    recent = html[html.index("<h2>Recent leads</h2>"):html.index("<h2>By service</h2>")]
     for key in ("xss_id", "booked_id", "jane_id", "dup_id"):
         assert f'href="/dashboard/leads/{scene[key]}"' in recent
     assert "Bea Booker" in recent
@@ -495,7 +495,7 @@ def test_overview_recent_leads_is_capped_at_ten(client, ctx, clock):
         post_lead(client, ads_payload(Email=f"lead{index}@example.com", PhoneNumber=f"31755502{index:02d}",
                                       FirstName=f"Lead{index}", LastName="Recent"))
     html = get(client, "/dashboard").text
-    recent = html[html.index("<h2>Recent leads</h2>"):]
+    recent = html[html.index("<h2>Recent leads</h2>"):html.index("<h2>By service</h2>")]
     assert recent.count('href="/dashboard/leads/lead_') == 10
     assert "Lead11 Recent" in recent and "Lead2 Recent" in recent
     assert "Lead1 Recent" not in recent and "Lead0 Recent" not in recent

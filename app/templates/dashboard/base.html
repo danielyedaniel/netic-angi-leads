@@ -8,34 +8,32 @@
 {% if live and live.on %}<meta http-equiv="refresh" content="{{ live.seconds }}; url={{ live.on_url }}">{% endif %}
 <title>{% block title %}Dashboard{% endblock %} · Angi leads</title>
 <style>
-  /* Colours are named by the job they do and defined once per colour scheme. */
+  /* Colours are named by the job they do and defined once per colour scheme.
+     The palette follows Netic's own site: warm off-white pages, deep green ink, one green accent. */
   :root {
-    color-scheme: light dark;
-    --page: #f9f9f7; --surface: #fcfcfb; --wash: rgba(11, 11, 11, 0.05);
-    --ink: #0b0b0b; --ink-2: #52514e; --muted: #6f6d68;
-    --hairline: #e1e0d9; --axis: #c3c2b7; --link: #1c5cab;
+    color-scheme: light;  /* one look, the light one Netic's own site uses, whatever the system theme */
+    --page: #f6f3ec; --surface: #fffefb; --wash: rgba(13, 47, 25, 0.05);
+    --ink: #082513; --ink-2: #4d4c4b; --muted: #7a7a76;
+    --hairline: #e6e2d6; --axis: #cfcabd; --link: #0d5a2b;
+    --brand: #0d2f19; --brand-ink: #fbf9f5; --accent: #0d5a2b; --accent-soft: #dbe8e0;
     /* status: always shown with an icon and a word, never as colour alone */
-    --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
+    --good: #1a8a45; --warning: #f0a81c; --critical: #c8372d;
     /* funnel stages: one hue, one step darker per stage */
-    --stage-1: #86b6ef; --stage-2: #5598e7; --stage-3: #2a78d6; --stage-4: #1c5cab; --stage-5: #104281;
+    --stage-1: #b5d1c0; --stage-2: #7fb094; --stage-3: #3f8a5c; --stage-4: #0d5a2b; --stage-5: #0d2f19;
     /* two unrelated categories */
-    --series-1: #2a78d6; --series-2: #eb6834;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --page: #0d0d0d; --surface: #1a1a19; --wash: rgba(255, 255, 255, 0.07);
-      --ink: #f0efec; --ink-2: #c3c2b7; --muted: #99978f;
-      --hairline: #2c2c2a; --axis: #383835; --link: #6da7ec;
-      --stage-1: #184f95; --stage-2: #256abf; --stage-3: #3987e5; --stage-4: #6da7ec; --stage-5: #9ec5f4;
-      --series-1: #3987e5; --series-2: #d95926;
-    }
+    --series-1: #0d5a2b; --series-2: #fc5d2b;
+    --shadow: 0 1px 2px rgba(13, 47, 25, 0.04), 0 8px 24px -12px rgba(13, 47, 25, 0.12);
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }  /* the display rules below would otherwise un-hide a hidden button */
   body { margin: 0; background: var(--page); color: var(--ink);
-         font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-  a { color: var(--link); }
-  h1 { font-size: 22px; line-height: 1.25; margin: 0; }
-  h2 { font-size: 15px; margin: 0 0 12px; }
+         font: 15px/1.55 Inter, "Inter Var", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  a { color: var(--link); text-decoration-color: rgba(13, 90, 43, 0.35); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:hover { text-decoration-color: currentColor; }
+  td > a { white-space: nowrap; }
+  h1, h2, .brand, .tile-value { font-family: Sanomat, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-weight: 500; letter-spacing: -0.01em; }
+  h1 { font-size: 30px; line-height: 1.2; margin: 0; }
+  h2 { font-size: 19px; margin: 0 0 12px; }
   h3 { font-size: 14px; margin: 0 0 8px; }
   p { margin: 0 0 12px; }
   code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
@@ -47,25 +45,47 @@
   .nowrap { white-space: nowrap; }
 
   /* layout */
-  .top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; padding: 10px 16px;
-         background: var(--surface); border-bottom: 1px solid var(--hairline); }
-  .brand { font-weight: 650; color: var(--ink); text-decoration: none; }
-  nav { display: flex; flex-wrap: wrap; gap: 2px; }
-  nav a { padding: 6px 10px; border-radius: 6px; color: var(--ink-2); text-decoration: none; }
-  nav a:hover { background: var(--wash); }
-  nav a[aria-current="page"] { background: var(--wash); color: var(--ink); font-weight: 600; }
+  /* navigation down the left-hand side; it folds to a bar across the top on a narrow screen */
+  body { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
+  .top { position: sticky; top: 0; align-self: start; height: 100vh; display: flex; flex-direction: column; gap: 28px; padding: 28px 16px;
+         background: var(--brand); color: var(--brand-ink); }
+  .brand { display: block; padding: 0 12px; color: var(--brand-ink); text-decoration: none; }
+  .brand .logo { display: block; width: 104px; height: auto; }
+  .brand span { display: block; margin-top: 10px; font-size: 18px; opacity: 0.85; }
+  nav { display: flex; flex-direction: column; gap: 4px; }
+  nav a { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 10px; color: var(--brand-ink); opacity: 0.8; text-decoration: none; }
+  nav a:hover { background: rgba(251, 249, 245, 0.12); opacity: 1; }
+  nav a[aria-current="page"] { background: var(--brand-ink); color: #0d2f19; opacity: 1; font-weight: 600; }
   .count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 999px;
            background: var(--critical); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
-  main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 56px; }
+  main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 28px 28px 64px; }
+  @media (max-width: 820px) {
+    body { display: block; }
+    .top { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 16px; }
+    .brand { padding: 0; } .brand .logo { width: 72px; } .brand span { margin-top: 4px; font-size: 14px; }
+    nav { flex-direction: row; flex-wrap: wrap; }
+    main { padding: 20px 16px 56px; }
+  }
   .page-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 16px; }
-  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px; padding: 22px 24px; margin-bottom: 16px; box-shadow: var(--shadow); }
   .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 0 16px; align-items: start; }
   .scroll { overflow-x: auto; }
+  /* a round "i" beside a page title; its explanation shows on hover or keyboard focus */
+  .title-row { display: flex; align-items: center; gap: 10px; }
+  .info { position: relative; display: inline-flex; }
+  .info-dot { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%;
+              border: 1.5px solid var(--accent); color: var(--accent); font: italic 600 13px Georgia, serif; cursor: help; }
+  .info:hover .info-dot, .info:focus .info-dot { background: var(--accent); color: var(--page); }
+  .info-pop { display: none; position: absolute; z-index: 10; left: -8px; top: 32px; width: min(520px, 70vw); padding: 14px 16px;
+              background: var(--brand); color: var(--brand-ink); border-radius: 12px; font-size: 13px; line-height: 1.55;
+              box-shadow: 0 12px 32px -8px rgba(13, 47, 25, 0.35); }
+  .info:hover .info-pop, .info:focus .info-pop, .info:focus-within .info-pop { display: block; }
 
   /* tables */
   table { width: 100%; border-collapse: collapse; }
-  th, td { padding: 7px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--hairline); }
-  th { font-size: 12px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+  th, td { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--hairline); }
+  th { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  tbody tr:hover td { background: var(--wash); }
   tr:last-child td { border-bottom: 0; }
   tbody.attention td { background: var(--wash); }
   tr.continues td { border-bottom: 0; padding-bottom: 0; }  /* a record that carries on in the next row */
@@ -82,13 +102,33 @@
   label.check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink); }
   input, select, button, textarea { font: inherit; color: var(--ink); }
   input[type="text"], input[type="search"], select, textarea {
-    display: block; width: 100%; min-width: 0; padding: 6px 8px; background: var(--surface);
-    border: 1px solid var(--axis); border-radius: 6px; }
+    display: block; width: 100%; min-width: 0; padding: 8px 10px; background: var(--surface);
+    border: 1px solid var(--axis); border-radius: 10px; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .filters input[type="search"], .filters select { width: auto; max-width: 100%; }
-  button, .button { display: inline-block; padding: 6px 12px; background: var(--surface); color: var(--ink);
-                    border: 1px solid var(--axis); border-radius: 6px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  /* filter bar: pill controls that apply themselves. The chevron is drawn in CSS (no image). */
+  .filters { align-items: center; gap: 10px; }
+  .filters label { position: relative; font-size: 0; }  /* the label's words stay for screen readers; each control says what it is */
+  .filters select, .filters input[type="search"] { height: 40px; border-radius: 999px; padding: 0 16px; font-size: 14px; font-weight: 500;
+    box-shadow: var(--shadow); transition: border-color 0.15s; }
+  .filters select { appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer; }
+  .filters label:has(> select)::after { content: ""; position: absolute; right: 16px; top: 50%; width: 7px; height: 7px; margin-top: -6px;
+    border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: rotate(45deg); pointer-events: none; }
+  .filters input[type="search"] { width: 300px; }
+  .filters select:hover, .filters input[type="search"]:hover { border-color: var(--accent); }
+  /* a yes/no filter is a chip that fills when it is on */
+  .filters label.check { height: 40px; padding: 0 16px; border: 1px solid var(--axis); border-radius: 999px; background: var(--surface);
+    font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: var(--shadow); }
+  .filters label.check input { position: absolute; opacity: 0; pointer-events: none; }
+  .filters label.check:hover { border-color: var(--accent); }
+  .filters label.check:has(input:checked) { background: var(--accent); border-color: var(--accent); color: var(--page); }
+  .filters label.check:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .filters button { height: 40px; border-radius: 999px; }
+  .filters .clear { margin-left: 4px; font-size: 13px; }
+  button, .button { display: inline-block; padding: 8px 14px; background: var(--surface); color: var(--ink);
+                    border: 1px solid var(--axis); border-radius: 10px; cursor: pointer; text-decoration: none; white-space: nowrap; }
   button:hover, .button:hover { background: var(--wash); }
-  button.primary, .button.primary { background: var(--ink); color: var(--page); border-color: var(--ink); font-weight: 600; }
+  button.primary, .button.primary { background: var(--accent); color: var(--page); border-color: var(--accent); font-weight: 600; }
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; align-items: end; }
   .fields > button { justify-self: start; }
   .inline-form { display: flex; flex-wrap: wrap; align-items: end; gap: 6px; }
@@ -121,15 +161,28 @@
 
   /* stat tiles */
   .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .tile { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 12px 14px; }
+  .tile { background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); }
   .tile-label { font-size: 12px; color: var(--ink-2); }
-  .tile-value { font-size: 24px; font-weight: 600; line-height: 1.3; }
+  .tile-value { font-size: 26px; line-height: 1.3; font-variant-numeric: tabular-nums; }
+  /* the four figures the page is read for: larger, first, one of them filled */
+  .tiles.hero { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .tiles.hero .tile { padding: 20px 22px; }
+  .tiles.hero .tile-label { font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .tiles.hero .tile-value { font-size: 44px; line-height: 1.15; margin: 6px 0 2px; }
+  .tiles.hero .tile.lead { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+  .tiles.hero .tile.lead .tile-label, .tiles.hero .tile.lead .tile-note { color: var(--brand-ink); opacity: 0.8; }
+  .section-label { margin: 4px 0 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .attention { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; padding: 0; list-style: none; }
+  .attention a { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: var(--accent-soft);
+                 color: var(--ink); text-decoration: none; font-weight: 500; }
+  .attention a strong { font-variant-numeric: tabular-nums; }
+  .attention a.critical { background: var(--critical); color: #fff; }
   .tile-note { font-size: 12px; color: var(--ink-2); }
 
   /* funnel: one thin bar per stage, all starting from the same left edge */
   .funnel { display: grid; grid-template-columns: max-content 1fr max-content max-content; gap: 10px 12px; align-items: center; }
-  .funnel-track { height: 16px; }
-  .funnel-bar { height: 16px; min-width: 2px; border-radius: 0 4px 4px 0; }
+  .funnel-track { height: 20px; background: var(--wash); border-radius: 6px; }
+  .funnel-bar { height: 20px; min-width: 2px; border-radius: 6px; }
   .funnel-bar.stage-1 { background: var(--stage-1); } .funnel-bar.stage-2 { background: var(--stage-2); }
   .funnel-bar.stage-3 { background: var(--stage-3); } .funnel-bar.stage-4 { background: var(--stage-4); }
   .funnel-bar.stage-5 { background: var(--stage-5); }
@@ -139,8 +192,8 @@
   .swatch { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; }
   .swatch.received { background: var(--stage-1); } .swatch.booked { background: var(--stage-4); }
   .swatch.series-1 { background: var(--series-1); } .swatch.series-2 { background: var(--series-2); }
-  .split { display: flex; gap: 2px; height: 8px; margin-bottom: 12px; }
-  .split span { min-width: 2px; border-radius: 4px; }
+  .split { display: flex; gap: 3px; height: 12px; margin-bottom: 12px; }
+  .split span { min-width: 2px; border-radius: 6px; }
   .split .series-1 { background: var(--series-1); } .split .series-2 { background: var(--series-2); }
 
   /* leads-per-day chart */
@@ -164,7 +217,7 @@
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="/dashboard">Angi leads</a>
+  <a class="brand" href="/dashboard"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 81 23" fill="none" role="img" aria-label="Netic"><path d="M0 22.1285H2.55994V8.70024H5.48559C5.87742 8.70024 6.19088 8.93908 6.34761 9.31062L10.7361 20.032C11.2585 21.3323 12.434 22.1285 13.8185 22.1285H19.3302V6.20567H16.7702V19.6339H13.8707C13.4789 19.6339 13.1654 19.3951 13.0087 19.0235L8.62021 8.30217C8.09777 7.00181 6.92229 6.20567 5.53783 6.20567H0V22.1285ZM30.7193 22.5C34.0629 22.5 36.6228 21.5446 38.4775 19.7931L36.8057 17.962C35.2122 19.5012 33.018 20.0054 30.7193 20.0054C27.4802 20.0054 25.2337 18.0416 24.9202 14.9367H39.2873V14.114C39.2873 9.09831 35.6563 5.78106 30.7193 5.78106C25.8084 5.78106 22.2036 9.12485 22.2036 14.114C22.2036 19.1297 25.7823 22.5 30.7193 22.5ZM25.0247 12.6544C25.5733 9.94753 27.7153 8.27563 30.7193 8.27563C33.6972 8.27563 35.9175 9.89445 36.4922 12.6544H25.0247ZM48.4038 22.1285H52.4004V19.6339H47.8291C46.8365 19.6339 46.2618 19.0501 46.2618 18.0416V8.75332H52.6616V6.25875H46.2618V2.27805H43.7541V6.25875H40.5933V8.75332H43.7018V17.3516C43.7018 20.1381 45.661 22.1285 48.4038 22.1285ZM59.4011 22.1285H61.961V9.97406C61.961 7.79795 60.4459 6.25875 58.304 6.25875H54.4902V8.75332H58.3562C59.0092 8.75332 59.4011 9.15139 59.4011 9.81484V22.1285ZM59.2182 3.81725H62.3006V0.5H59.2182V3.81725ZM73.6897 22.5C76.7721 22.5 78.888 21.5712 80.6643 19.7931L79.0708 18.0682C77.8431 19.4481 76.2235 20.0054 73.6897 20.0054C70.1371 20.0054 67.5772 17.8028 67.5772 14.1936C67.5772 10.5579 70.111 8.27563 73.6897 8.27563C76.119 8.27563 77.5296 8.85947 79.1753 10.611L80.821 8.80639C79.2014 6.94873 76.7982 5.78106 73.6897 5.78106C68.7004 5.78106 64.9128 9.12485 64.9128 14.1936C64.9128 19.2358 68.7266 22.5 73.6897 22.5Z" fill="currentColor"></path></svg><span>Angi Leads</span></a>
   <nav aria-label="Dashboard sections">
     {% for key, label, href in [
       ("overview", "Overview", "/dashboard"),
@@ -181,9 +234,26 @@
   {% if flash %}<p class="notice {{ flash.tone }}" role="status">{{ flash.text }}</p>{% endif %}
   {% block content %}{% endblock %}
 </main>
-{# Progressive enhancement only: copy buttons stay hidden without JavaScript, and the text
-   they copy is always on the page to select by hand. No data is ever written into this script. #}
+{# Progressive enhancement only. Without JavaScript the filters keep their Apply button, and copy
+   buttons stay hidden: the text they copy is always on the page to select by hand. No data is ever written into this script. #}
 <script>
+  // Filters apply as soon as they change, so the Apply button is hidden. Without JavaScript
+  // the button stays and works as before.
+  document.querySelectorAll("form.filters").forEach(function (form) {
+    form.querySelectorAll("select, input[type=checkbox]").forEach(function (control) {
+      control.addEventListener("change", function () { form.submit(); });
+    });
+    // Typing in the search box applies after a short pause; the box keeps the cursor across the reload.
+    var search = form.querySelector("input[type=search]"), timer = null;
+    if (search) {
+      search.addEventListener("input", function () {
+        clearTimeout(timer);
+        timer = setTimeout(function () { form.submit(); }, 450);
+      });
+      if (search.value) { search.focus(); search.setSelectionRange(search.value.length, search.value.length); }
+    }
+    form.querySelectorAll("button[type=submit]").forEach(function (button) { button.hidden = true; });
+  });
   document.querySelectorAll("[data-copy]").forEach(function (button) {
     button.hidden = false;
     button.addEventListener("click", function () {

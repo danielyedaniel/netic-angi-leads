@@ -29,13 +29,17 @@
   <button type="submit">Apply</button>
 </form>
 
-<section class="tiles" aria-label="Key figures">
-  <div class="tile">
-    <div class="tile-label">Leads received</div>
-    <div class="tile-value">{{ funnel_counts.received }}</div>
-    <div class="tile-note">{{ funnel_counts.unique }} unique</div>
-  </div>
-  <div class="tile">
+{# What needs a person, before any number: shown only when there is something. #}
+{% if open_alerts or dupes.open_claims %}
+<ul class="attention" aria-label="Needs attention">
+  {% if open_alerts %}<li><a class="critical" href="/dashboard/monitoring"><strong>{{ open_alerts }}</strong> open alert(s)</a></li>{% endif %}
+  {% if dupes.open_claims %}<li><a href="/dashboard/credits"><strong>{{ dupes.claimable_cents|money }}</strong> claimable credit in {{ dupes.open_claims }} open claim(s)</a></li>{% endif %}
+</ul>
+{% endif %}
+
+{# The four figures the page is read for. #}
+<section class="tiles hero" aria-label="Key figures">
+  <div class="tile lead">
     <div class="tile-label">Lead to booked rate</div>
     <div class="tile-value">{{ funnel_counts.booking_rate|pct }}</div>
     <div class="tile-note">{{ funnel_counts.booked }} of {{ funnel_counts.received }} booked</div>
@@ -46,6 +50,20 @@
     <div class="tile-note">90th percentile {{ speed.speed_to_lead_p90_seconds|duration }}</div>
   </div>
   <div class="tile">
+    <div class="tile-label">Leads received</div>
+    <div class="tile-value">{{ funnel_counts.received }}</div>
+    <div class="tile-note">{{ funnel_counts.unique }} unique</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Cost per booking</div>
+    <div class="tile-value">{{ cash.cost_per_booking_cents|money }}</div>
+    <div class="tile-note">per lead {{ cash.cost_per_lead_cents|money }}</div>
+  </div>
+</section>
+
+<p class="section-label">Money and duplicates</p>
+<section class="tiles" aria-label="Supporting figures">
+  <div class="tile">
     <div class="tile-label">Contacted within 1 minute</div>
     <div class="tile-value">{{ speed.contacted_within_1_min|pct }}</div>
     <div class="tile-note">within 5 minutes {{ speed.contacted_within_5_min|pct }}</div>
@@ -54,11 +72,6 @@
     <div class="tile-label">Spend on leads</div>
     <div class="tile-value">{{ cash.spend_cents|money }}</div>
     <div class="tile-note">{{ cash.credited_cents|money }} credited back</div>
-  </div>
-  <div class="tile">
-    <div class="tile-label">Cost per booking</div>
-    <div class="tile-value">{{ cash.cost_per_booking_cents|money }}</div>
-    <div class="tile-note">per lead {{ cash.cost_per_lead_cents|money }}</div>
   </div>
   <div class="tile">
     <div class="tile-label">Revenue from won jobs</div>
@@ -183,6 +196,31 @@
   </section>
 </div>
 
+<section class="card">
+  <h2>Recent leads</h2>
+  {% if recent %}
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Received (UTC)</th><th>Name</th><th>Service</th><th>Tenant</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for lead in recent %}
+        <tr>
+          <td class="nowrap">{{ lead.received_at|dt }}</td>
+          <td><a href="/dashboard/leads/{{ lead.id }}">{{ lead.full_name or "(no name)" }}</a> {{ lead_flags(lead) }}</td>
+          <td>{{ lead.task_name or "—" }}</td>
+          <td>{{ lead.tenant_name }}</td>
+          <td>{{ badge(lead.status) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="small" style="margin: 10px 0 0"><a href="/dashboard/leads{% if tenant_id %}?tenant={{ tenant_id|urlencode }}{% endif %}">All leads</a></p>
+  {% else %}
+  <p class="empty">No leads in this period yet.</p>
+  {% endif %}
+</section>
+
 <div class="cols">
   <section class="card">
     <h2>By service</h2>
@@ -222,28 +260,4 @@
   </section>
 </div>
 
-<section class="card">
-  <h2>Recent leads</h2>
-  {% if recent %}
-  <div class="scroll">
-    <table>
-      <thead><tr><th>Received (UTC)</th><th>Name</th><th>Service</th><th>Tenant</th><th>Status</th></tr></thead>
-      <tbody>
-        {% for lead in recent %}
-        <tr>
-          <td class="nowrap">{{ lead.received_at|dt }}</td>
-          <td><a href="/dashboard/leads/{{ lead.id }}">{{ lead.full_name or "(no name)" }}</a> {{ lead_flags(lead) }}</td>
-          <td>{{ lead.task_name or "—" }}</td>
-          <td>{{ lead.tenant_name }}</td>
-          <td>{{ badge(lead.status) }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <p class="small" style="margin: 10px 0 0"><a href="/dashboard/leads{% if tenant_id %}?tenant={{ tenant_id|urlencode }}{% endif %}">All leads</a></p>
-  {% else %}
-  <p class="empty">No leads in this period yet.</p>
-  {% endif %}
-</section>
 {% endblock %}

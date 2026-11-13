@@ -3,18 +3,20 @@
 {% block title %}Credits{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h1>Duplicate-lead credits</h1>
-  <a class="button primary" href="{{ export_url }}">Export CSV</a>
-</div>
-
-<p class="muted" style="max-width: 78ch">
+  <div class="title-row">
+    <h1>Duplicate-lead credits</h1>
+    <span class="info" tabindex="0" aria-label="How Angi credits work"><span class="info-dot" aria-hidden="true">i</span><span class="info-pop" role="tooltip">
   A duplicate is the same homeowner charged twice within {{ rules.duplicate_window_days }} days, through the same
   Angi account. Angi must be asked for the credit within {{ rules.request_window_days }} days of the charge, and
   expects the business to have tried to call the homeowner within {{ rules.contact_sla_hours }} hours. What is
   recorded here is the first email, which is what this system sends; mention a call if one was made. Requests
   are filed by a person in the Angi for Pros app (there is no API), so each claim below comes with text ready
   to paste.
-</p>
+    </span></span>
+  </div>
+  <a class="button primary" href="{{ export_url }}">Export CSV</a>
+</div>
+
 
 <form class="filters" method="get" action="/dashboard/credits">
   <label>Tenant

@@ -2,17 +2,18 @@
 {% block title %}Tenants{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h1>Tenants</h1>
-  <span class="muted small">{{ tenants|length }} tenant(s)</span>
-</div>
-
-<p class="muted" style="max-width: 78ch">
+  <div class="title-row">
+    <h1>Tenants</h1>
+    <span class="info" tabindex="0" aria-label="How a lead finds its tenant"><span class="info-dot" aria-hidden="true">i</span><span class="info-pop" role="tooltip">
   A lead finds its tenant by the tenant's own webhook URL, by the crmKey Angi echoes back, or by the Angi account
   id in the payload. A lead from an account that is not mapped here is quarantined, and is processed as soon as the
   mapping is added. If a tenant's own URL or crmKey and an existing mapping disagree about whose lead it is, the lead
   is quarantined too. Correcting the mapping here releases it. Correcting the URL registered with Angi only helps the
   leads that follow: the one that is waiting has to be assigned to the mapped tenant through the admin API, or discarded.
-</p>
+    </span></span>
+  </div>
+  <span class="muted small">{{ tenants|length }} tenant(s)</span>
+</div>
 
 {% if unmapped %}
 <div class="notice warning" role="status">

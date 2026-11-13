@@ -1744,7 +1744,7 @@ def test_every_dashboard_page_renders_on_the_simulated_history(simulated, tmp_pa
             assert response.status_code == 200, path
             assert response.text.rstrip().endswith("</html>"), path
         overview = browser.get("/dashboard?days=all", headers=ADMIN).text
-        assert f'<div class="tile-value">{len(lead_ids)}</div>' in overview and overview.count("<svg") == 2
+        assert f'<div class="tile-value">{len(lead_ids)}</div>' in overview and overview.count("<svg") == 3
         monitoring = browser.get("/dashboard/monitoring?status=quarantined", headers=ADMIN).text
         event_id = re.search(r'action="/dashboard/events/(evt_[0-9a-f]+)/discard"', monitoring).group(1)
         assert "Replay all quarantined (1)" in monitoring and "Its Angi account is not mapped to a tenant." in monitoring
